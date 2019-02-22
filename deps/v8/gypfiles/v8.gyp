@@ -2715,6 +2715,8 @@
         '../src/torque/instructions.h',
         '../src/torque/source-positions.cc',
         '../src/torque/source-positions.h',
+        '../src/torque/torque-compiler.cc',
+        '../src/torque/torque-compiler.h',
         '../src/torque/torque-parser.cc',
         '../src/torque/torque-parser.h',
         '../src/torque/type-oracle.cc',

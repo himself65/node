@@ -49,6 +49,13 @@ void ClearBreakOnNextFunctionCall(Isolate* isolate);
  */
 MaybeLocal<Array> GetInternalProperties(Isolate* isolate, Local<Value> value);
 
+/**
+ * Returns array of private fields specific to the value type. Result has
+ * the following format: [<name>, <value>,...,<name>, <value>]. Result array
+ * will be allocated in the current context.
+ */
+MaybeLocal<Array> GetPrivateFields(Local<Context> context, Local<Object> value);
+
 enum ExceptionBreakState {
   NoBreakOnException = 0,
   BreakOnUncaughtException = 1,
@@ -193,13 +200,7 @@ void ResetBlackboxedStateCache(Isolate* isolate,
 
 int EstimatedValueSize(Isolate* isolate, v8::Local<v8::Value> value);
 
-enum Builtin {
-  kObjectKeys,
-  kObjectGetPrototypeOf,
-  kObjectGetOwnPropertyDescriptor,
-  kObjectGetOwnPropertyNames,
-  kObjectGetOwnPropertySymbols,
-};
+enum Builtin { kStringToLowerCase };
 
 Local<Function> GetBuiltin(Isolate* isolate, Builtin builtin);
 
@@ -230,25 +231,6 @@ class GeneratorObject {
 class V8_EXPORT_PRIVATE Coverage {
  public:
   MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(Coverage);
-
-  enum Mode {
-    // Make use of existing information in feedback vectors on the heap.
-    // Only return a yes/no result. Optimization and GC are not affected.
-    // Collecting best effort coverage does not reset counters.
-    kBestEffort,
-    // Disable optimization and prevent feedback vectors from being garbage
-    // collected in order to preserve precise invocation counts. Collecting
-    // precise count coverage resets counters to get incremental updates.
-    kPreciseCount,
-    // We are only interested in a yes/no result for the function. Optimization
-    // and GC can be allowed once a function has been invoked. Collecting
-    // precise binary coverage resets counters for incremental updates.
-    kPreciseBinary,
-    // Similar to the precise coverage modes but provides coverage at a
-    // lower granularity. Design doc: goo.gl/lA2swZ.
-    kBlockCount,
-    kBlockBinary,
-  };
 
   // Forward declarations.
   class ScriptData;
@@ -316,7 +298,7 @@ class V8_EXPORT_PRIVATE Coverage {
   static Coverage CollectPrecise(Isolate* isolate);
   static Coverage CollectBestEffort(Isolate* isolate);
 
-  static void SelectMode(Isolate* isolate, Mode mode);
+  static void SelectMode(Isolate* isolate, CoverageMode mode);
 
   size_t ScriptCount() const;
   ScriptData GetScriptData(size_t i) const;
@@ -335,10 +317,6 @@ class V8_EXPORT_PRIVATE TypeProfile {
  public:
   MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(TypeProfile);
 
-  enum Mode {
-    kNone,
-    kCollect,
-  };
   class ScriptData;  // Forward declaration.
 
   class V8_EXPORT_PRIVATE Entry {
@@ -378,7 +356,7 @@ class V8_EXPORT_PRIVATE TypeProfile {
 
   static TypeProfile Collect(Isolate* isolate);
 
-  static void SelectMode(Isolate* isolate, Mode mode);
+  static void SelectMode(Isolate* isolate, TypeProfileMode mode);
 
   size_t ScriptCount() const;
   ScriptData GetScriptData(size_t i) const;
@@ -474,13 +452,8 @@ void SetReturnValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
 enum class NativeAccessorType {
   None = 0,
   HasGetter = 1 << 0,
-  HasSetter = 1 << 1,
-  IsBuiltin = 1 << 2
+  HasSetter = 1 << 1
 };
-
-int GetNativeAccessorDescriptor(v8::Local<v8::Context> context,
-                                v8::Local<v8::Object> object,
-                                v8::Local<v8::Name> name);
 
 int64_t GetNextRandomInt64(v8::Isolate* isolate);
 
@@ -517,6 +490,39 @@ class WeakMap : public v8::Object {
 
  private:
   WeakMap();
+};
+
+struct PropertyDescriptor {
+  bool enumerable : 1;
+  bool has_enumerable : 1;
+  bool configurable : 1;
+  bool has_configurable : 1;
+  bool writable : 1;
+  bool has_writable : 1;
+  v8::Local<v8::Value> value;
+  v8::Local<v8::Value> get;
+  v8::Local<v8::Value> set;
+};
+
+class PropertyIterator {
+ public:
+  static std::unique_ptr<PropertyIterator> Create(v8::Local<v8::Object> object);
+
+  virtual ~PropertyIterator() = default;
+
+  virtual bool Done() const = 0;
+  virtual void Advance() = 0;
+
+  virtual v8::Local<v8::Name> name() const = 0;
+
+  virtual bool is_native_accessor() = 0;
+  virtual bool has_native_getter() = 0;
+  virtual bool has_native_setter() = 0;
+  virtual Maybe<PropertyAttribute> attributes() = 0;
+  virtual Maybe<PropertyDescriptor> descriptor() = 0;
+
+  virtual bool is_own() = 0;
+  virtual bool is_array_index() = 0;
 };
 }  // namespace debug
 }  // namespace v8

@@ -49,7 +49,7 @@ std::string StringLiteralUnquote(const std::string& s) {
 std::string StringLiteralQuote(const std::string& s) {
   std::stringstream result;
   result << '"';
-  for (size_t i = 0; i < s.length() - 1; ++i) {
+  for (size_t i = 0; i < s.length(); ++i) {
     switch (s[i]) {
       case '\n':
         result << "\\n";
@@ -73,14 +73,57 @@ std::string StringLiteralQuote(const std::string& s) {
   return result.str();
 }
 
+static const char kFileUriPrefix[] = "file://";
+static const int kFileUriPrefixLength = sizeof(kFileUriPrefix) - 1;
+
+static int HexCharToInt(unsigned char c) {
+  if (isdigit(c)) return c - '0';
+  if (isupper(c)) return c - 'A' + 10;
+  DCHECK(islower(c));
+  return c - 'a' + 10;
+}
+
+base::Optional<std::string> FileUriDecode(const std::string& uri) {
+  // Abort decoding of URIs that don't start with "file://".
+  if (uri.rfind(kFileUriPrefix) != 0) return base::nullopt;
+
+  const std::string path = uri.substr(kFileUriPrefixLength);
+  std::ostringstream decoded;
+
+  for (auto iter = path.begin(), end = path.end(); iter != end; ++iter) {
+    std::string::value_type c = (*iter);
+
+    // Normal characters are appended.
+    if (c != '%') {
+      decoded << c;
+      continue;
+    }
+
+    // If '%' is not followed by at least two hex digits, we abort.
+    if (std::distance(iter, end) <= 2) return base::nullopt;
+
+    unsigned char first = (*++iter);
+    unsigned char second = (*++iter);
+    if (!isxdigit(first) || !isxdigit(second)) return base::nullopt;
+
+    // An escaped hex value needs converting.
+    unsigned char value = HexCharToInt(first) * 16 + HexCharToInt(second);
+    decoded << value;
+  }
+
+  return decoded.str();
+}
+
 std::string CurrentPositionAsString() {
   return PositionAsString(CurrentSourcePosition::Get());
 }
 
 DEFINE_CONTEXTUAL_VARIABLE(LintErrorStatus)
 
-[[noreturn]] void ReportErrorString(const std::string& error) {
-  std::cerr << CurrentPositionAsString() << ": Torque error: " << error << "\n";
+[[noreturn]] void ReportErrorString(const std::string& error,
+                                    bool print_position) {
+  if (print_position) std::cerr << CurrentPositionAsString() << ": ";
+  std::cerr << ": Torque error: " << error << "\n";
   v8::base::OS::Abort();
 }
 
@@ -109,26 +152,28 @@ bool ContainsUpperCase(const std::string& s) {
   return std::any_of(s.begin(), s.end(), [](char c) { return isupper(c); });
 }
 
-// Torque has some module constants that are used like language level
+// Torque has some namespace constants that are used like language level
 // keywords, e.g.: 'True', 'Undefined', etc.
 // These do not need to follow the default naming convention for constants.
 bool IsKeywordLikeName(const std::string& s) {
-  static const std::vector<std::string> keyword_like_constants{
-      "True", "False", "Hole", "Null", "Undefined"};
+  static const char* const keyword_like_constants[]{"True", "False", "Hole",
+                                                    "Null", "Undefined"};
 
-  return std::find(keyword_like_constants.begin(), keyword_like_constants.end(),
-                   s) != keyword_like_constants.end();
+  return std::find(std::begin(keyword_like_constants),
+                   std::end(keyword_like_constants),
+                   s) != std::end(keyword_like_constants);
 }
 
 // Untagged/MachineTypes like 'int32', 'intptr' etc. follow a 'all-lowercase'
 // naming convention and are those exempt from the normal type convention.
 bool IsMachineType(const std::string& s) {
-  static const std::vector<std::string> machine_types{
-      "void",    "never",   "int32",   "uint32", "int64",  "intptr",
-      "uintptr", "float32", "float64", "bool",   "string", "int31"};
+  static const char* const machine_types[]{
+      "void",    "never",   "int8",    "uint8",  "int16",  "uint16",
+      "int31",   "uint31",  "int32",   "uint32", "int64",  "intptr",
+      "uintptr", "float32", "float64", "bool",   "string", "bint"};
 
-  return std::find(machine_types.begin(), machine_types.end(), s) !=
-         machine_types.end();
+  return std::find(std::begin(machine_types), std::end(machine_types), s) !=
+         std::end(machine_types);
 }
 
 }  // namespace
@@ -148,7 +193,7 @@ bool IsSnakeCase(const std::string& s) {
   return !ContainsUpperCase(s);
 }
 
-bool IsValidModuleConstName(const std::string& s) {
+bool IsValidNamespaceConstName(const std::string& s) {
   if (s.empty()) return false;
   if (IsKeywordLikeName(s)) return true;
 
@@ -160,6 +205,19 @@ bool IsValidTypeName(const std::string& s) {
   if (IsMachineType(s)) return true;
 
   return IsUpperCamelCase(s);
+}
+
+std::string CapifyStringWithUnderscores(const std::string& camellified_string) {
+  std::string result;
+  bool previousWasLower = false;
+  for (auto current : camellified_string) {
+    if (previousWasLower && isupper(current)) {
+      result += "_";
+    }
+    result += toupper(current);
+    previousWasLower = (islower(current));
+  }
+  return result;
 }
 
 std::string CamelifyString(const std::string& underscore_string) {

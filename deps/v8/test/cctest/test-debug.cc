@@ -165,7 +165,7 @@ void CheckDebuggerUnloaded() {
 
   // Iterate the heap and check that there are no debugger related objects left.
   HeapIterator iterator(CcTest::heap());
-  for (HeapObject* obj = iterator.next(); obj != nullptr;
+  for (HeapObject obj = iterator.next(); !obj.is_null();
        obj = iterator.next()) {
     CHECK(!obj->IsDebugInfo());
   }
@@ -2818,6 +2818,21 @@ TEST(DebugBreakInWrappedScript) {
   CheckDebuggerUnloaded();
 }
 
+static void EmptyHandler(const v8::FunctionCallbackInfo<v8::Value>& args) {}
+
+TEST(DebugScopeIteratorWithFunctionTemplate) {
+  LocalContext env;
+  v8::HandleScope handle_scope(env->GetIsolate());
+  v8::Isolate* isolate = env->GetIsolate();
+  EnableDebugger(isolate);
+  v8::Local<v8::Function> func =
+      v8::Function::New(env.local(), EmptyHandler).ToLocalChecked();
+  std::unique_ptr<v8::debug::ScopeIterator> iterator =
+      v8::debug::ScopeIterator::CreateForFunction(isolate, func);
+  CHECK(iterator->Done());
+  DisableDebugger(isolate);
+}
+
 TEST(DebugBreakWithoutJS) {
   i::FLAG_stress_compaction = false;
 #ifdef VERIFY_HEAP
@@ -2934,8 +2949,8 @@ TEST(NoBreakWhenBootstrapping) {
   {
     // Create a context with an extension to make sure that some JavaScript
     // code is executed during bootstrapping.
-    v8::RegisterExtension(new v8::Extension("simpletest",
-                                            kSimpleExtensionSource));
+    v8::RegisterExtension(v8::base::make_unique<v8::Extension>(
+        "simpletest", kSimpleExtensionSource));
     const char* extension_names[] = { "simpletest" };
     v8::ExtensionConfiguration extensions(1, extension_names);
     v8::HandleScope handle_scope(isolate);
@@ -3039,7 +3054,7 @@ TEST(DebugScriptLineEndsAreAscending) {
         v8::internal::Script::cast(instances->get(i)), CcTest::i_isolate());
 
     v8::internal::Script::InitLineEnds(script);
-    v8::internal::FixedArray* ends =
+    v8::internal::FixedArray ends =
         v8::internal::FixedArray::cast(script->line_ends());
     CHECK_GT(ends->length(), 0);
 
@@ -4007,7 +4022,7 @@ UNINITIALIZED_TEST(DebugSetOutOfMemoryListener) {
     CHECK(!near_heap_limit_callback_called);
     // The following allocation fails unless the out-of-memory callback
     // increases the heap limit.
-    int length = 10 * i::MB / i::kPointerSize;
+    int length = 10 * i::MB / i::kTaggedSize;
     i_isolate->factory()->NewFixedArray(length, i::TENURED);
     CHECK(near_heap_limit_callback_called);
     isolate->RemoveNearHeapLimitCallback(NearHeapLimitCallback, 0);
@@ -4016,11 +4031,14 @@ UNINITIALIZED_TEST(DebugSetOutOfMemoryListener) {
 }
 
 TEST(DebugCoverage) {
+  // Coverage needs feedback vectors.
+  if (i::FLAG_lite_mode) return;
   i::FLAG_always_opt = false;
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope scope(isolate);
-  v8::debug::Coverage::SelectMode(isolate, v8::debug::Coverage::kPreciseCount);
+  v8::debug::Coverage::SelectMode(isolate,
+                                  v8::debug::CoverageMode::kPreciseCount);
   v8::Local<v8::String> source = v8_str(
       "function f() {\n"
       "}\n"
@@ -4069,11 +4087,14 @@ v8::debug::Coverage::ScriptData GetScriptDataAndDeleteCoverage(
 }  // namespace
 
 TEST(DebugCoverageWithCoverageOutOfScope) {
+  // Coverage needs feedback vectors.
+  if (i::FLAG_lite_mode) return;
   i::FLAG_always_opt = false;
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope scope(isolate);
-  v8::debug::Coverage::SelectMode(isolate, v8::debug::Coverage::kPreciseCount);
+  v8::debug::Coverage::SelectMode(isolate,
+                                  v8::debug::CoverageMode::kPreciseCount);
   v8::Local<v8::String> source = v8_str(
       "function f() {\n"
       "}\n"
@@ -4138,11 +4159,14 @@ v8::debug::Coverage::FunctionData GetFunctionDataAndDeleteCoverage(
 }  // namespace
 
 TEST(DebugCoverageWithScriptDataOutOfScope) {
+  // Coverage needs feedback vectors.
+  if (i::FLAG_lite_mode) return;
   i::FLAG_always_opt = false;
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
   v8::HandleScope scope(isolate);
-  v8::debug::Coverage::SelectMode(isolate, v8::debug::Coverage::kPreciseCount);
+  v8::debug::Coverage::SelectMode(isolate,
+                                  v8::debug::CoverageMode::kPreciseCount);
   v8::Local<v8::String> source = v8_str(
       "function f() {\n"
       "}\n"
@@ -4163,12 +4187,10 @@ TEST(BuiltinsExceptionPrediction) {
   v8::HandleScope handle_scope(isolate);
   v8::Context::New(isolate);
 
-  i::Snapshot::EnsureAllBuiltinsAreDeserialized(iisolate);
-
   i::Builtins* builtins = iisolate->builtins();
   bool fail = false;
   for (int i = 0; i < i::Builtins::builtin_count; i++) {
-    i::Code* builtin = builtins->builtin(i);
+    i::Code builtin = builtins->builtin(i);
     if (builtin->kind() != i::Code::BUILTIN) continue;
     auto prediction = builtin->GetBuiltinCatchPrediction();
     USE(prediction);
@@ -4213,9 +4235,10 @@ TEST(DebugEvaluateNoSideEffect) {
   std::vector<i::Handle<i::JSFunction>> all_functions;
   {
     i::HeapIterator iterator(isolate->heap());
-    while (i::HeapObject* obj = iterator.next()) {
+    for (i::HeapObject obj = iterator.next(); !obj.is_null();
+         obj = iterator.next()) {
       if (!obj->IsJSFunction()) continue;
-      i::JSFunction* fun = i::JSFunction::cast(obj);
+      i::JSFunction fun = i::JSFunction::cast(obj);
       all_functions.emplace_back(fun, isolate);
     }
   }
@@ -4249,7 +4272,6 @@ i::MaybeHandle<i::Script> FindScript(
 
 UNINITIALIZED_TEST(LoadedAtStartupScripts) {
   i::FLAG_expose_gc = true;
-  i::FLAG_expose_natives_as = "natives";
 
   v8::Isolate::CreateParams create_params;
   create_params.array_buffer_allocator = CcTest::array_buffer_allocator();
@@ -4266,8 +4288,8 @@ UNINITIALIZED_TEST(LoadedAtStartupScripts) {
     {
       i::DisallowHeapAllocation no_gc;
       i::Script::Iterator iterator(i_isolate);
-      i::Script* script;
-      while ((script = iterator.Next()) != nullptr) {
+      for (i::Script script = iterator.Next(); !script.is_null();
+           script = iterator.Next()) {
         if (script->type() == i::Script::TYPE_NATIVE &&
             script->name()->IsUndefined(i_isolate)) {
           continue;
@@ -4276,16 +4298,11 @@ UNINITIALIZED_TEST(LoadedAtStartupScripts) {
         scripts.emplace_back(script, i_isolate);
       }
     }
-    CHECK_EQ(count_by_type[i::Script::TYPE_NATIVE],
-             i::Natives::GetBuiltinsCount());
+    CHECK_EQ(count_by_type[i::Script::TYPE_NATIVE], 0);
     CHECK_EQ(count_by_type[i::Script::TYPE_EXTENSION], 2);
     CHECK_EQ(count_by_type[i::Script::TYPE_NORMAL], 1);
     CHECK_EQ(count_by_type[i::Script::TYPE_WASM], 0);
     CHECK_EQ(count_by_type[i::Script::TYPE_INSPECTOR], 0);
-
-    i::Handle<i::Script> native_array_script =
-        FindScript(i_isolate, scripts, "native array.js").ToHandleChecked();
-    CHECK_EQ(native_array_script->type(), i::Script::TYPE_NATIVE);
 
     i::Handle<i::Script> gc_script =
         FindScript(i_isolate, scripts, "v8/gc").ToHandleChecked();
@@ -4485,4 +4502,100 @@ TEST(Regress517592) {
   CompileRun(v8_str("foo()"));
   CHECK_EQ(delegate.break_count(), 1);
   v8::debug::SetDebugDelegate(env->GetIsolate(), nullptr);
+}
+
+TEST(GetPrivateFields) {
+  LocalContext env;
+  v8::Isolate* v8_isolate = CcTest::isolate();
+  v8::internal::Isolate* isolate = CcTest::i_isolate();
+  v8::HandleScope scope(v8_isolate);
+  v8::Local<v8::Context> context = env.local();
+  v8::internal::FLAG_harmony_class_fields = true;
+  v8::internal::FLAG_harmony_private_fields = true;
+  v8::Local<v8::String> source = v8_str(
+      "var X = class {\n"
+      "  #foo = 1;\n"
+      "  #bar = function() {};\n"
+      "}\n"
+      "var x = new X()");
+  CompileRun(source);
+  v8::Local<v8::Object> object = v8::Local<v8::Object>::Cast(
+      env->Global()
+          ->Get(context, v8_str(env->GetIsolate(), "x"))
+          .ToLocalChecked());
+  v8::Local<v8::Array> private_names =
+      v8::debug::GetPrivateFields(context, object).ToLocalChecked();
+
+  for (int i = 0; i < 4; i = i + 2) {
+    Handle<v8::internal::JSReceiver> private_name =
+        v8::Utils::OpenHandle(*private_names->Get(context, i)
+                                   .ToLocalChecked()
+                                   ->ToObject(context)
+                                   .ToLocalChecked());
+    Handle<v8::internal::JSValue> private_value =
+        Handle<v8::internal::JSValue>::cast(private_name);
+    Handle<v8::internal::Symbol> priv_symbol(
+        v8::internal::Symbol::cast(private_value->value()), isolate);
+    CHECK(priv_symbol->is_private_name());
+  }
+
+  source = v8_str(
+      "var Y = class {\n"
+      "  #baz = 2;\n"
+      "}\n"
+      "var X = class extends Y{\n"
+      "  #foo = 1;\n"
+      "  #bar = function() {};\n"
+      "}\n"
+      "var x = new X()");
+  CompileRun(source);
+  object = v8::Local<v8::Object>::Cast(
+      env->Global()
+          ->Get(context, v8_str(env->GetIsolate(), "x"))
+          .ToLocalChecked());
+  private_names = v8::debug::GetPrivateFields(context, object).ToLocalChecked();
+
+  for (int i = 0; i < 6; i = i + 2) {
+    Handle<v8::internal::JSReceiver> private_name =
+        v8::Utils::OpenHandle(*private_names->Get(context, i)
+                                   .ToLocalChecked()
+                                   ->ToObject(context)
+                                   .ToLocalChecked());
+    Handle<v8::internal::JSValue> private_value =
+        Handle<v8::internal::JSValue>::cast(private_name);
+    Handle<v8::internal::Symbol> priv_symbol(
+        v8::internal::Symbol::cast(private_value->value()), isolate);
+    CHECK(priv_symbol->is_private_name());
+  }
+
+  source = v8_str(
+      "var Y = class {\n"
+      "  constructor() {"
+      "    return new Proxy({}, {});"
+      "  }"
+      "}\n"
+      "var X = class extends Y{\n"
+      "  #foo = 1;\n"
+      "  #bar = function() {};\n"
+      "}\n"
+      "var x = new X()");
+  CompileRun(source);
+  object = v8::Local<v8::Object>::Cast(
+      env->Global()
+          ->Get(context, v8_str(env->GetIsolate(), "x"))
+          .ToLocalChecked());
+  private_names = v8::debug::GetPrivateFields(context, object).ToLocalChecked();
+
+  for (int i = 0; i < 4; i = i + 2) {
+    Handle<v8::internal::JSReceiver> private_name =
+        v8::Utils::OpenHandle(*private_names->Get(context, i)
+                                   .ToLocalChecked()
+                                   ->ToObject(context)
+                                   .ToLocalChecked());
+    Handle<v8::internal::JSValue> private_value =
+        Handle<v8::internal::JSValue>::cast(private_name);
+    Handle<v8::internal::Symbol> priv_symbol(
+        v8::internal::Symbol::cast(private_value->value()), isolate);
+    CHECK(priv_symbol->is_private_name());
+  }
 }

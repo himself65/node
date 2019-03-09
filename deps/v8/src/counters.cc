@@ -8,12 +8,18 @@
 
 #include "src/base/platform/platform.h"
 #include "src/builtins/builtins-definitions.h"
+#include "src/counters-inl.h"
 #include "src/isolate.h"
 #include "src/log-inl.h"
 #include "src/log.h"
+#include "src/ostreams.h"
 
 namespace v8 {
 namespace internal {
+
+std::atomic_uint TracingFlags::runtime_stats{0};
+std::atomic_uint TracingFlags::gc_stats{0};
+std::atomic_uint TracingFlags::ic_stats{0};
 
 StatsTable::StatsTable(Counters* counters)
     : lookup_function_(nullptr),
@@ -34,35 +40,35 @@ StatsCounterThreadSafe::StatsCounterThreadSafe(Counters* counters,
 
 void StatsCounterThreadSafe::Set(int Value) {
   if (ptr_) {
-    base::LockGuard<base::Mutex> Guard(&mutex_);
+    base::MutexGuard Guard(&mutex_);
     SetLoc(ptr_, Value);
   }
 }
 
 void StatsCounterThreadSafe::Increment() {
   if (ptr_) {
-    base::LockGuard<base::Mutex> Guard(&mutex_);
+    base::MutexGuard Guard(&mutex_);
     IncrementLoc(ptr_);
   }
 }
 
 void StatsCounterThreadSafe::Increment(int value) {
   if (ptr_) {
-    base::LockGuard<base::Mutex> Guard(&mutex_);
+    base::MutexGuard Guard(&mutex_);
     IncrementLoc(ptr_, value);
   }
 }
 
 void StatsCounterThreadSafe::Decrement() {
   if (ptr_) {
-    base::LockGuard<base::Mutex> Guard(&mutex_);
+    base::MutexGuard Guard(&mutex_);
     DecrementLoc(ptr_);
   }
 }
 
 void StatsCounterThreadSafe::Decrement(int value) {
   if (ptr_) {
-    base::LockGuard<base::Mutex> Guard(&mutex_);
+    base::MutexGuard Guard(&mutex_);
     DecrementLoc(ptr_, value);
   }
 }
@@ -506,7 +512,7 @@ void RuntimeCallStats::Print(std::ostream& os) {
 }
 
 void RuntimeCallStats::Reset() {
-  if (V8_LIKELY(FLAG_runtime_stats == 0)) return;
+  if (V8_LIKELY(!TracingFlags::is_runtime_stats_enabled())) return;
 
   // In tracing, we only what to trace the time spent on top level trace events,
   // if runtime counter stack is not empty, we should clear the whole runtime
@@ -530,27 +536,32 @@ void RuntimeCallStats::Dump(v8::tracing::TracedValue* value) {
   in_use_ = false;
 }
 
-WorkerThreadRuntimeCallStats::WorkerThreadRuntimeCallStats()
-    : tls_key_(base::Thread::CreateThreadLocalKey()) {}
+WorkerThreadRuntimeCallStats::WorkerThreadRuntimeCallStats() {}
 
 WorkerThreadRuntimeCallStats::~WorkerThreadRuntimeCallStats() {
-  base::Thread::DeleteThreadLocalKey(tls_key_);
+  if (tls_key_) base::Thread::DeleteThreadLocalKey(*tls_key_);
+}
+
+base::Thread::LocalStorageKey WorkerThreadRuntimeCallStats::GetKey() {
+  DCHECK(TracingFlags::is_runtime_stats_enabled());
+  if (!tls_key_) tls_key_ = base::Thread::CreateThreadLocalKey();
+  return *tls_key_;
 }
 
 RuntimeCallStats* WorkerThreadRuntimeCallStats::NewTable() {
-  DCHECK(FLAG_runtime_stats);
+  DCHECK(TracingFlags::is_runtime_stats_enabled());
   std::unique_ptr<RuntimeCallStats> new_table =
       base::make_unique<RuntimeCallStats>();
   RuntimeCallStats* result = new_table.get();
 
-  base::LockGuard<base::Mutex> lock(&mutex_);
+  base::MutexGuard lock(&mutex_);
   tables_.push_back(std::move(new_table));
   return result;
 }
 
 void WorkerThreadRuntimeCallStats::AddToMainTable(
     RuntimeCallStats* main_call_stats) {
-  base::LockGuard<base::Mutex> lock(&mutex_);
+  base::MutexGuard lock(&mutex_);
   for (auto& worker_stats : tables_) {
     DCHECK_NE(main_call_stats, worker_stats.get());
     main_call_stats->Add(worker_stats.get());
@@ -561,7 +572,7 @@ void WorkerThreadRuntimeCallStats::AddToMainTable(
 WorkerThreadRuntimeCallStatsScope::WorkerThreadRuntimeCallStatsScope(
     WorkerThreadRuntimeCallStats* worker_stats)
     : table_(nullptr) {
-  if (V8_LIKELY(!FLAG_runtime_stats)) return;
+  if (V8_LIKELY(!TracingFlags::is_runtime_stats_enabled())) return;
 
   table_ = reinterpret_cast<RuntimeCallStats*>(
       base::Thread::GetThreadLocal(worker_stats->GetKey()));
@@ -570,8 +581,8 @@ WorkerThreadRuntimeCallStatsScope::WorkerThreadRuntimeCallStatsScope(
     base::Thread::SetThreadLocal(worker_stats->GetKey(), table_);
   }
 
-  if (FLAG_runtime_stats &
-      v8::tracing::TracingCategoryObserver::ENABLED_BY_TRACING) {
+  if ((TracingFlags::runtime_stats.load(std::memory_order_relaxed) &
+       v8::tracing::TracingCategoryObserver::ENABLED_BY_TRACING)) {
     table_->Reset();
   }
 }
@@ -579,7 +590,7 @@ WorkerThreadRuntimeCallStatsScope::WorkerThreadRuntimeCallStatsScope(
 WorkerThreadRuntimeCallStatsScope::~WorkerThreadRuntimeCallStatsScope() {
   if (V8_LIKELY(table_ == nullptr)) return;
 
-  if ((FLAG_runtime_stats &
+  if ((TracingFlags::runtime_stats.load(std::memory_order_relaxed) &
        v8::tracing::TracingCategoryObserver::ENABLED_BY_TRACING)) {
     auto value = v8::tracing::TracedValue::Create();
     table_->Dump(value.get());

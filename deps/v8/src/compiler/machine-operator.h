@@ -6,10 +6,10 @@
 #define V8_COMPILER_MACHINE_OPERATOR_H_
 
 #include "src/base/compiler-specific.h"
+#include "src/base/enum-set.h"
 #include "src/base/flags.h"
 #include "src/globals.h"
 #include "src/machine-type.h"
-#include "src/utils.h"
 #include "src/zone/zone.h"
 
 namespace v8 {
@@ -142,14 +142,13 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
     kWord64ReverseBits = 1u << 17,
     kInt32AbsWithOverflow = 1u << 20,
     kInt64AbsWithOverflow = 1u << 21,
-    kSpeculationFence = 1u << 22,
-    kAllOptionalOps =
-        kFloat32RoundDown | kFloat64RoundDown | kFloat32RoundUp |
-        kFloat64RoundUp | kFloat32RoundTruncate | kFloat64RoundTruncate |
-        kFloat64RoundTiesAway | kFloat32RoundTiesEven | kFloat64RoundTiesEven |
-        kWord32Ctz | kWord64Ctz | kWord32Popcnt | kWord64Popcnt |
-        kWord32ReverseBits | kWord64ReverseBits | kInt32AbsWithOverflow |
-        kInt64AbsWithOverflow | kSpeculationFence
+    kAllOptionalOps = kFloat32RoundDown | kFloat64RoundDown | kFloat32RoundUp |
+                      kFloat64RoundUp | kFloat32RoundTruncate |
+                      kFloat64RoundTruncate | kFloat64RoundTiesAway |
+                      kFloat32RoundTiesEven | kFloat64RoundTiesEven |
+                      kWord32Ctz | kWord64Ctz | kWord32Popcnt | kWord64Popcnt |
+                      kWord32ReverseBits | kWord64ReverseBits |
+                      kInt32AbsWithOverflow | kInt64AbsWithOverflow
   };
   typedef base::Flags<Flag, unsigned> Flags;
 
@@ -172,8 +171,8 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
       return AlignmentRequirements(kNoSupport);
     }
     static AlignmentRequirements SomeUnalignedAccessUnsupported(
-        EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes,
-        EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes) {
+        base::EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes,
+        base::EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes) {
       return AlignmentRequirements(kSomeSupport, unalignedLoadUnsupportedTypes,
                                    unalignedStoreUnsupportedTypes);
     }
@@ -181,15 +180,15 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
    private:
     explicit AlignmentRequirements(
         AlignmentRequirements::UnalignedAccessSupport unalignedAccessSupport,
-        EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes =
-            EnumSet<MachineRepresentation>(),
-        EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes =
-            EnumSet<MachineRepresentation>())
+        base::EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes =
+            base::EnumSet<MachineRepresentation>(),
+        base::EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes =
+            base::EnumSet<MachineRepresentation>())
         : unalignedSupport_(unalignedAccessSupport),
           unalignedLoadUnsupportedTypes_(unalignedLoadUnsupportedTypes),
           unalignedStoreUnsupportedTypes_(unalignedStoreUnsupportedTypes) {}
 
-    bool IsUnalignedSupported(EnumSet<MachineRepresentation> unsupported,
+    bool IsUnalignedSupported(base::EnumSet<MachineRepresentation> unsupported,
                               MachineRepresentation rep) const {
       // All accesses of bytes in memory are aligned.
       DCHECK_NE(MachineRepresentation::kWord8, rep);
@@ -199,14 +198,14 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
         case kNoSupport:
           return false;
         case kSomeSupport:
-          return !unsupported.Contains(rep);
+          return !unsupported.contains(rep);
       }
       UNREACHABLE();
     }
 
     const AlignmentRequirements::UnalignedAccessSupport unalignedSupport_;
-    const EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes_;
-    const EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes_;
+    const base::EnumSet<MachineRepresentation> unalignedLoadUnsupportedTypes_;
+    const base::EnumSet<MachineRepresentation> unalignedStoreUnsupportedTypes_;
   };
 
   explicit MachineOperatorBuilder(
@@ -322,6 +321,7 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   const Operator* ChangeFloat64ToInt64();
   const Operator* ChangeFloat64ToUint32();  // narrowing
   const Operator* ChangeFloat64ToUint64();
+  const Operator* TruncateFloat64ToInt64();
   const Operator* TruncateFloat64ToUint32();
   const Operator* TruncateFloat32ToInt32();
   const Operator* TruncateFloat32ToUint32();
@@ -669,8 +669,6 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   // atomic-pair-compare-exchange [base + index], old_value_high, old_value_low,
   // new_value_high, new_value_low
   const Operator* Word32AtomicPairCompareExchange();
-
-  const OptionalOperator SpeculationFence();
 
   // Target machine word-size assumed by this builder.
   bool Is32() const { return word() == MachineRepresentation::kWord32; }

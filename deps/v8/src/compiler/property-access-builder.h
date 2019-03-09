@@ -26,19 +26,17 @@ class SimplifiedOperatorBuilder;
 
 class PropertyAccessBuilder {
  public:
-  PropertyAccessBuilder(JSGraph* jsgraph, JSHeapBroker* js_heap_broker,
+  PropertyAccessBuilder(JSGraph* jsgraph, JSHeapBroker* broker,
                         CompilationDependencies* dependencies)
-      : jsgraph_(jsgraph),
-        js_heap_broker_(js_heap_broker),
-        dependencies_(dependencies) {}
+      : jsgraph_(jsgraph), broker_(broker), dependencies_(dependencies) {}
 
   // Builds the appropriate string check if the maps are only string
   // maps.
-  bool TryBuildStringCheck(MapHandles const& maps, Node** receiver,
-                           Node** effect, Node* control);
+  bool TryBuildStringCheck(JSHeapBroker* broker, MapHandles const& maps,
+                           Node** receiver, Node** effect, Node* control);
   // Builds a number check if all maps are number maps.
-  bool TryBuildNumberCheck(MapHandles const& maps, Node** receiver,
-                           Node** effect, Node* control);
+  bool TryBuildNumberCheck(JSHeapBroker* broker, MapHandles const& maps,
+                           Node** receiver, Node** effect, Node* control);
 
   Node* BuildCheckHeapObject(Node* receiver, Node** effect, Node* control);
   void BuildCheckMaps(Node* receiver, Node** effect, Node* control,
@@ -54,7 +52,7 @@ class PropertyAccessBuilder {
 
  private:
   JSGraph* jsgraph() const { return jsgraph_; }
-  JSHeapBroker* js_heap_broker() const { return js_heap_broker_; }
+  JSHeapBroker* broker() const { return broker_; }
   CompilationDependencies* dependencies() const { return dependencies_; }
   Graph* graph() const;
   Isolate* isolate() const;
@@ -69,11 +67,11 @@ class PropertyAccessBuilder {
   Node* ResolveHolder(PropertyAccessInfo const& access_info, Node* receiver);
 
   JSGraph* jsgraph_;
-  JSHeapBroker* js_heap_broker_;
+  JSHeapBroker* broker_;
   CompilationDependencies* dependencies_;
 };
 
-bool HasOnlyStringMaps(MapHandles const& maps);
+bool HasOnlyStringMaps(JSHeapBroker* broker, MapHandles const& maps);
 
 }  // namespace compiler
 }  // namespace internal

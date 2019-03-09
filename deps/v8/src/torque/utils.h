@@ -5,21 +5,27 @@
 #ifndef V8_TORQUE_UTILS_H_
 #define V8_TORQUE_UTILS_H_
 
+#include <ostream>
+#include <streambuf>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include "src/base/functional.h"
+#include "src/base/optional.h"
 #include "src/torque/contextual.h"
 
 namespace v8 {
 namespace internal {
 namespace torque {
 
-typedef std::vector<std::string> NameVector;
-
 std::string StringLiteralUnquote(const std::string& s);
 std::string StringLiteralQuote(const std::string& s);
+
+// Decodes "file://" URIs into file paths which can then be used
+// with the standard stream API.
+V8_EXPORT_PRIVATE base::Optional<std::string> FileUriDecode(
+    const std::string& s);
 
 class LintErrorStatus : public ContextualClass<LintErrorStatus> {
  public:
@@ -42,17 +48,25 @@ void NamingConventionError(const std::string& type, const std::string& name,
 bool IsLowerCamelCase(const std::string& s);
 bool IsUpperCamelCase(const std::string& s);
 bool IsSnakeCase(const std::string& s);
-bool IsValidModuleConstName(const std::string& s);
+bool IsValidNamespaceConstName(const std::string& s);
 bool IsValidTypeName(const std::string& s);
 
-[[noreturn]] void ReportErrorString(const std::string& error);
+[[noreturn]] void ReportErrorString(const std::string& error,
+                                    bool print_position);
 template <class... Args>
 [[noreturn]] void ReportError(Args&&... args) {
   std::stringstream s;
   USE((s << std::forward<Args>(args))...);
-  ReportErrorString(s.str());
+  ReportErrorString(s.str(), true);
+}
+template <class... Args>
+[[noreturn]] void ReportErrorWithoutPosition(Args&&... args) {
+  std::stringstream s;
+  USE((s << std::forward<Args>(args))...);
+  ReportErrorString(s.str(), false);
 }
 
+std::string CapifyStringWithUnderscores(const std::string& camellified_string);
 std::string CamelifyString(const std::string& underscore_string);
 std::string DashifyString(const std::string& underscore_string);
 
@@ -167,6 +181,10 @@ class StackRange {
   BottomOffset end_;
 };
 
+inline std::ostream& operator<<(std::ostream& out, StackRange range) {
+  return out << "StackRange{" << range.begin() << ", " << range.end() << "}";
+}
+
 template <class T>
 class Stack {
  public:
@@ -214,9 +232,9 @@ class Stack {
   // Delete the slots in {range}, moving higher slots to fill the gap.
   void DeleteRange(StackRange range) {
     DCHECK_LE(range.end(), AboveTop());
-    for (BottomOffset i = range.begin();
-         i < std::min(range.end(), AboveTop() - range.Size()); ++i) {
-      elements_[i.offset] = std::move(elements_[i.offset + range.Size()]);
+    if (range.Size() == 0) return;
+    for (BottomOffset i = range.end(); i < AboveTop(); ++i) {
+      elements_[i.offset - range.Size()] = std::move(elements_[i.offset]);
     }
     elements_.resize(elements_.size() - range.Size());
   }
@@ -243,6 +261,13 @@ T* CheckNotNull(T* x) {
   return x;
 }
 
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, Stack<T>& t) {
+  os << "Stack{";
+  PrintCommaSeparatedList(os, t);
+  os << "}";
+  return os;
+}
 class ToString {
  public:
   template <class T>
@@ -254,6 +279,42 @@ class ToString {
 
  private:
   std::stringstream s_;
+};
+
+static const char* const kBaseNamespaceName = "base";
+static const char* const kTestNamespaceName = "test";
+
+// Erase elements of a container that has a constant-time erase function, like
+// std::set or std::list. Calling this on std::vector would have quadratic
+// complexity.
+template <class Container, class F>
+void EraseIf(Container* container, F f) {
+  for (auto it = container->begin(); it != container->end();) {
+    if (f(*it)) {
+      it = container->erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+class NullStreambuf : public std::streambuf {
+ public:
+  virtual int overflow(int c) {
+    setp(buffer_, buffer_ + sizeof(buffer_));
+    return (c == traits_type::eof()) ? '\0' : c;
+  }
+
+ private:
+  char buffer_[64];
+};
+
+class NullOStream : public std::ostream {
+ public:
+  NullOStream() : std::ostream(&buffer_) {}
+
+ private:
+  NullStreambuf buffer_;
 };
 
 }  // namespace torque

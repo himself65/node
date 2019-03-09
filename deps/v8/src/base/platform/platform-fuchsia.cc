@@ -20,14 +20,13 @@ uint32_t GetProtectionFromMemoryPermission(OS::MemoryPermission access) {
     case OS::MemoryPermission::kNoAccess:
       return 0;  // no permissions
     case OS::MemoryPermission::kRead:
-      return ZX_VM_FLAG_PERM_READ;
+      return ZX_VM_PERM_READ;
     case OS::MemoryPermission::kReadWrite:
-      return ZX_VM_FLAG_PERM_READ | ZX_VM_FLAG_PERM_WRITE;
+      return ZX_VM_PERM_READ | ZX_VM_PERM_WRITE;
     case OS::MemoryPermission::kReadWriteExecute:
-      return ZX_VM_FLAG_PERM_READ | ZX_VM_FLAG_PERM_WRITE |
-             ZX_VM_FLAG_PERM_EXECUTE;
+      return ZX_VM_PERM_READ | ZX_VM_PERM_WRITE | ZX_VM_PERM_EXECUTE;
     case OS::MemoryPermission::kReadExecute:
-      return ZX_VM_FLAG_PERM_READ | ZX_VM_FLAG_PERM_EXECUTE;
+      return ZX_VM_PERM_READ | ZX_VM_PERM_EXECUTE;
   }
   UNREACHABLE();
 }
@@ -49,12 +48,21 @@ void* OS::Allocate(void* address, size_t size, size_t alignment,
   size_t request_size = size + (alignment - page_size);
 
   zx_handle_t vmo;
-  if (zx_vmo_create(request_size, 0, &vmo) != ZX_OK) {
+  if (zx_vmo_create(request_size, ZX_VMO_NON_RESIZABLE, &vmo) != ZX_OK) {
     return nullptr;
   }
   static const char kVirtualMemoryName[] = "v8-virtualmem";
   zx_object_set_property(vmo, ZX_PROP_NAME, kVirtualMemoryName,
                          strlen(kVirtualMemoryName));
+
+  // Always call zx_vmo_replace_as_executable() in case the memory will need
+  // to be marked as executable in the future.
+  // TOOD(https://crbug.com/v8/8899): Only call this when we know that the
+  // region will need to be marked as executable in the future.
+  if (zx_vmo_replace_as_executable(vmo, ZX_HANDLE_INVALID, &vmo) != ZX_OK) {
+    return nullptr;
+  }
+
   uintptr_t reservation;
   uint32_t prot = GetProtectionFromMemoryPermission(access);
   zx_status_t status = zx_vmar_map(zx_vmar_root_self(), prot, 0, vmo, 0,
@@ -117,6 +125,12 @@ bool OS::SetPermissions(void* address, size_t size, MemoryPermission access) {
   uint32_t prot = GetProtectionFromMemoryPermission(access);
   return zx_vmar_protect(zx_vmar_root_self(), prot,
                          reinterpret_cast<uintptr_t>(address), size) == ZX_OK;
+}
+
+// static
+bool OS::DiscardSystemPages(void* address, size_t size) {
+  // TODO(hpayer): Does Fuchsia have madvise?
+  return true;
 }
 
 // static

@@ -103,7 +103,7 @@ std::string NaiveEscape(const std::string& input, char escaped_char) {
   }
   // Disallow trailing backslashes as they mess with our naive source string
   // concatenation.
-  if (out.back() == '\\') out.back() = '_';
+  if (!out.empty() && out.back() == '\\') out.back() = '_';
 
   return out;
 }
@@ -316,7 +316,13 @@ std::string GenerateSourceString(FuzzerArgs* args, const std::string& test) {
      << "const slow = test();\n"
      << "%SetForceSlowPath(false);\n";
   // clang-format on
-  return ss.str();
+
+  std::string source = ss.str();
+  if (kVerbose) {
+    fprintf(stderr, "Generated source:\n```\n%s\n```\n", source.c_str());
+  }
+
+  return source;
 }
 
 void PrintExceptionMessage(v8::Isolate* isolate, v8::TryCatch* try_catch) {

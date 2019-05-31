@@ -58,6 +58,7 @@ using v8::PropertyCallbackInfo;
 using v8::Script;
 using v8::String;
 using v8::TryCatch;
+using v8::Undefined;
 using v8::Value;
 
 // These interfaces represent an existing request processing interface.
@@ -438,6 +439,19 @@ void JsHttpRequestProcessor::MapSet(Local<Name> name, Local<Value> value_obj,
   info.GetReturnValue().Set(value_obj);
 }
 
+void JsHttpRequestProcessor::MapDelete(Local<Name> name, Local<Value> value_obj,
+                                    const PropertyCallbackInfo<Value>& info) {
+  if (name->IsSymbol()) return;
+
+  // Fetch the map wrapped by this object.
+  map<string, string>* obj = UnwrapMap(info.Holder());
+
+  // Convert the JavaScript string to a std::string.
+  string key = ObjectToString(info.GetIsolate(), Local<String>::Cast(name));
+
+  info.GetReturnValue().Set(Undefined());
+}
+
 
 Local<ObjectTemplate> JsHttpRequestProcessor::MakeMapTemplate(
     Isolate* isolate) {
@@ -445,7 +459,7 @@ Local<ObjectTemplate> JsHttpRequestProcessor::MakeMapTemplate(
 
   Local<ObjectTemplate> result = ObjectTemplate::New(isolate);
   result->SetInternalFieldCount(1);
-  result->SetHandler(NamedPropertyHandlerConfiguration(MapGet, MapSet));
+  result->SetHandler(NamedPropertyHandlerConfiguration(MapGet, MapSet, nullptr, MapDelete));
 
   // Again, return the result through the current handle scope.
   return handle_scope.Escape(result);

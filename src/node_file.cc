@@ -1333,16 +1333,8 @@ int MKDirpAsync(uv_loop_t* loop,
             req_wrap->continuation_data->PushPath(std::move(path));
             req_wrap->continuation_data->PushPath(std::move(dirname));
           } else if (req_wrap->continuation_data->paths.size() == 0) {
-              uv_fs_stat(loop, req, next_path.c_str(), uv_fs_callback_t{
-                [](uv_fs_t* req) {
-                  DWORD attr = GetFileAttributesW(path.c_str());
-                  bool isDIR = (attr & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
-                  if (!isDIR) {
-                    req_wrap->continuation_data->Done(err);
-                  }
-                }
-              err = UV_EEXIST;
-              continue;
+            err = UV_EEXIST;
+            continue;
           }
           uv_fs_req_cleanup(req);
           MKDirpAsync(loop, req, path.c_str(),
@@ -1371,6 +1363,12 @@ int MKDirpAsync(uv_loop_t* loop,
                 MKDirpAsync(loop, req, path.c_str(),
                             req_wrap->continuation_data->mode, nullptr);
                 return;
+              } else {
+                if (!req_wrap->continuation_data->paths.empty()) {
+                  // face a file when mkdir
+                  err = UV_ENOTDIR;
+                  req_wrap->continuation_data->Done(err);
+                }
               }
               err = UV_ENOTDIR;
             }

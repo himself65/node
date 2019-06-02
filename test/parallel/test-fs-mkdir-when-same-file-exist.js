@@ -6,8 +6,6 @@ const fs = require('fs');
 
 fs.writeFileSync('./foo', '');
 
-try {
-  fs.mkdirSync('./foo/foo');
-} catch (e) {
+fs.mkdir('./foo/foo', { recursive: true }, function (e) {
   assert(e.code, 'EEXIST');
-}
+});

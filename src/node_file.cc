@@ -1363,6 +1363,12 @@ int MKDirpAsync(uv_loop_t* loop,
                 MKDirpAsync(loop, req, path.c_str(),
                             req_wrap->continuation_data->mode, nullptr);
                 return;
+              } else {
+                if (!req_wrap->continuation_data->paths.empty()) {
+                  // face a file when mkdir
+                  err = UV_ENOTDIR;
+                  req_wrap->continuation_data->Done(err);
+                }
               }
               err = UV_ENOTDIR;
             }

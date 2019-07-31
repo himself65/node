@@ -22,12 +22,9 @@
 'use strict';
 require('../common');
 const assert = require('assert');
-let exception = null;
 
 try {
   eval('"\\uc/ef"');
 } catch (e) {
-  exception = e;
+  assert(e instanceof SyntaxError);
 }
-
-assert(exception instanceof SyntaxError);

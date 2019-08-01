@@ -301,6 +301,12 @@ assert.strictEqual(qs.stringify({ foo: Infinity }), 'foo=');
 
 qs.parse(undefined); // Should not throw.
 
+// ignore undefined variable
+assert.strictEqual(
+  qs.stringify({ a: 'b', c: undefined }),
+  qs.stringify({ a: 'b' })
+);
+
 // nested in colon
 {
   const f = qs.stringify({

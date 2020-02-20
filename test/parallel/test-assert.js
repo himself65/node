@@ -193,6 +193,22 @@ assert.throws(
   }
 );
 
+assert.throws(
+  () => a.doesNotThrow(
+    () => a.notEqual(1, 1),
+    {
+      message: '1 != 1',
+      operator: '!='
+    }),
+  {
+    name: 'AssertionError',
+    code: 'ERR_ASSERTION',
+    operator: 'doesNotThrow',
+    message: 'Got unwanted exception: 1 != 1\n' +
+      'Actual message: "[object Object]"'
+  }
+);
+
 // Make sure that validating using constructor really works.
 {
   let threw = false;

@@ -834,7 +834,7 @@ Maybe<URL> FinalizeResolution(Environment* env,
     if (resolved.path().back() != '/') {
       file = ResolveIndex(URL(resolved.path() + "/", &base));
     } else {
-      file = ResolveIndex(resolved);
+      file = PackageResolve(resolved, &base);
     }
     if (!file.IsNothing()) {
       return file;

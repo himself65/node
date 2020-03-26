@@ -676,6 +676,12 @@ const cookie = request.getHeader('Cookie');
 // 'cookie' is of type string[]
 ```
 
+### `request.maxHeaderListPairs`
+
+* {number} **Default** `1000`
+
+Alias to maxHeadersCount
+
 ### `request.maxHeadersCount`
 
 * {number} **Default:** `2000`
@@ -1136,6 +1142,12 @@ added: v5.7.0
 -->
 
 * {boolean} Indicates whether or not the server is listening for connections.
+
+### `request.maxHeaderListPairs`
+
+* {number} **Default** `1000`
+
+Alias to maxHeadersCount
 
 ### `server.maxHeadersCount`
 <!-- YAML

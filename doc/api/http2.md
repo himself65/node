@@ -2263,6 +2263,8 @@ changes:
     counted towards the current limit. **Default:** `10`.
   * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
     The minimum value is `1`. **Default:** `128`.
+  * `maxHeadersCount` {number} Set the maximum number of header count.
+    Alias to `maxHeaderListPairs`.
   * `maxOutstandingPings` {number} Sets the maximum number of outstanding,
     unacknowledged pings. **Default:** `10`.
   * `maxReservedRemoteStreams` {number} Sets the maximum number of reserved push

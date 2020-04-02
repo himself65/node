@@ -155,6 +155,9 @@ class ThreadSafeFunction : public node::AsyncResource {
       if (mode == napi_tsfn_nonblocking) {
         return napi_queue_full;
       }
+      if (env->node_env()->thread_id == thread_id) {
+        return napi_thread_incorrect;
+      }
       cond->Wait(lock);
     }
 
@@ -221,7 +224,9 @@ class ThreadSafeFunction : public node::AsyncResource {
 
   napi_status Init() {
     ThreadSafeFunction* ts_fn = this;
-    uv_loop_t* loop = env->node_env()->event_loop();
+    node::Environment* e = env->node_env();
+    thread_id = e->thread_id;
+    uv_loop_t* loop = e->event_loop();
 
     if (uv_async_init(loop, &async, AsyncCb) == 0) {
       if (max_queue_size > 0) {
@@ -427,6 +432,7 @@ class ThreadSafeFunction : public node::AsyncResource {
   std::queue<void*> queue;
   uv_async_t async;
   uv_idle_t idle;
+  uint64_t thread_id;
   size_t thread_count;
   bool is_closing;
 

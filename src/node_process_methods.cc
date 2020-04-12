@@ -378,6 +378,11 @@ static void DebugProcess(const FunctionCallbackInfo<Value>& args) {
   wchar_t mapping_name[32];
   LPTHREAD_START_ROUTINE* handler = nullptr;
   DWORD pid = 0;
+ 
+  if (!args[0]->IsNumber()) {
+    return;
+  }
+  pid = args[0].As<Integer>()->Value();
 
   auto cleanup = OnScopeLeave([&]() {
     if (process != nullptr) CloseHandle(process);
@@ -385,9 +390,6 @@ static void DebugProcess(const FunctionCallbackInfo<Value>& args) {
     if (handler != nullptr) UnmapViewOfFile(handler);
     if (mapping != nullptr) CloseHandle(mapping);
   });
-
-  CHECK(args[0]->IsNumber());
-  pid = args[0].As<Integer>()->Value();
 
   process =
       OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |

@@ -420,7 +420,7 @@ int FileHandle::ReadStart() {
       read_wrap = MakeDetachedBaseObject<FileHandleReadWrap>(this, wrap_obj);
     }
   }
-  int64_t recommended_read = 65536;
+  size_t recommended_read = 65536;
   if (read_length_ >= 0 && read_length_ <= recommended_read)
     recommended_read = read_length_;
 

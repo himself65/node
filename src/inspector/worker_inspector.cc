@@ -53,13 +53,6 @@ class WorkerFinishedRequest : public Request {
 };
 }  // namespace
 
-
-ParentInspectorHandle::ParentInspectorHandle(
-    int id, const std::string& url,
-    std::shared_ptr<MainThreadHandle> parent_thread, bool wait_for_connect)
-    : id_(id), url_(url), parent_thread_(parent_thread),
-      wait_(wait_for_connect) {}
-
 ParentInspectorHandle::~ParentInspectorHandle() {
   parent_thread_->Post(
       std::unique_ptr<Request>(new WorkerFinishedRequest(id_)));

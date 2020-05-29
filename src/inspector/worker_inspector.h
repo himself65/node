@@ -55,7 +55,11 @@ class ParentInspectorHandle {
  public:
   ParentInspectorHandle(int id, const std::string& url,
                         std::shared_ptr<MainThreadHandle> parent_thread,
-                        bool wait_for_connect);
+                        bool wait_for_connect)
+      : id_(id),
+        url_(url),
+        parent_thread_(parent_thread),
+        wait_(wait_for_connect){};
   ~ParentInspectorHandle();
   std::unique_ptr<ParentInspectorHandle> NewParentInspectorHandle(
       int thread_id, const std::string& url) {

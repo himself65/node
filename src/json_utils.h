@@ -24,7 +24,7 @@ class JSONWriter {
   inline void deindent() { indent_ -= 2; }
   inline void advance() {
     if (compact_) return;
-    for (int i = 0; i < indent_; i++) out_ << ' ';
+    out_ << out_.fill(' ') << out_.width(indent_);
   }
   inline void write_one_space() {
     if (compact_) return;

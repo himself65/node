@@ -221,7 +221,6 @@ static void WriteNodeReport(Isolate* isolate,
            tm_struct.wHour,
            tm_struct.wMinute,
            tm_struct.wSecond);
-  writer.json_keyvalue("dumpEventTime", timebuf);
 #else  // UNIX, OSX
   snprintf(timebuf,
            sizeof(timebuf),
@@ -232,8 +231,8 @@ static void WriteNodeReport(Isolate* isolate,
            tm_struct.tm_hour,
            tm_struct.tm_min,
            tm_struct.tm_sec);
-  writer.json_keyvalue("dumpEventTime", timebuf);
 #endif
+  writer.json_keyvalue("dumpEventTime", timebuf);
 
   uv_timeval64_t ts;
   if (uv_gettimeofday(&ts) == 0) {

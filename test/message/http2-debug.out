@@ -1,0 +1,158 @@
+HTTP2 21364: Http2Session client: created
+(node:21364) Warning: Setting the NODE_DEBUG environment variable to 'http2' can expose sensitive data (such as passwords, tokens and authentication headers) in the resulting log.
+(Use `node --trace-warnings ...` to show where the warning was created)
+HTTP2 21364: Http2Session server: received a connection
+HTTP2 21364: Http2Session server: setting up session handle
+Http2Session server (14) session created
+Http2Session server (14) i/o stream consumed
+HTTP2 21364: Http2Session server: sending settings
+HTTP2 21364: Http2Session server: submitting settings
+Http2Session server (14) scheduling write
+HTTP2 21364: Http2Session server: created
+HTTP2 21364: Http2Session client: setting up session handle
+Http2Session client (18) session created
+Http2Session client (18) i/o stream consumed
+HTTP2 21364: Http2Session client: sending settings
+HTTP2 21364: Http2Session client: submitting settings
+Http2Session client (18) scheduling write
+HTTP2 21364: Http2Session client: initiating request
+HTTP2 21364: Http2Session client: connected, initializing request
+Http2Session client (18) request submitted
+Http2Priority: parent: 0, weight: 16, exclusive: no
+Http2Session client (18) submitting request
+HttpStream 1 (25) [Http2Session client (18)] writable side shutdown
+Http2Session client (18) request submitted, new stream id 1
+HTTP2 21364: Http2Stream 1 [Http2Session client]: shutting down writable on _final
+HttpStream 1 (25) [Http2Session client (18)] writable side shutdown
+HttpStream 1 (25) [Http2Session client (18)] reading starting
+Http2Session server (14) sending pending data
+Http2Session server (14) nghttp2 has 9 bytes to send
+Http2Session server (14) wants read? 1
+Http2Session client (18) sending pending data
+Http2Session client (18) nghttp2 has 24 bytes to send
+Http2Session client (18) nghttp2 has 9 bytes to send
+Http2Session client (18) nghttp2 has 17 bytes to send
+Http2Session client (18) nghttp2 has 17 bytes to send
+Http2Session client (18) nghttp2 has 25 bytes to send
+Http2Session client (18) wants read? 1
+Http2Session client (18) receiving 9 bytes, offset 0
+Http2Session client (18) receiving 9 bytes [wants data? 1]
+Http2Session client (18) complete frame received: type: 4
+Http2Session client (18) sending pending data
+Http2Session client (18) nghttp2 has 9 bytes to send
+Http2Session client (18) wants read? 1
+Http2Session client (18) wants read? 1
+Http2Session server (14) receiving 101 bytes, offset 0
+Http2Session server (14) receiving 101 bytes [wants data? 1]
+Http2Session server (14) complete frame received: type: 4
+Http2Session server (14) complete frame received: type: 6
+Http2Session server (14) complete frame received: type: 6
+Http2Session server (14) beginning headers for stream 1
+Http2Session server (14) complete frame received: type: 1
+Http2Session server (14) handle headers frame for stream 1
+HTTP2 21364: Http2Stream 1 [Http2Session server]: headers received
+HTTP2 21364: Http2Stream 1 [Http2Session server]: initiating response
+HttpStream 1 (28) [Http2Session server (14)] submitting response
+HttpStream 1 (28) [Http2Session server (14)] response submitted
+Http2Session server (14) complete frame received: type: 4
+HTTP2 21364: Http2Session server: settings received
+Http2Session server (14) settings refreshed for session
+Http2Session server (14) sending pending data
+Http2Session server (14) nghttp2 has 9 bytes to send
+Http2Session server (14) nghttp2 has 17 bytes to send
+Http2Session server (14) nghttp2 has 17 bytes to send
+Http2Session server (14) nghttp2 has 17 bytes to send
+Http2Session server (14) nghttp2 has 34 bytes to send
+Http2Session server (14) reading outbound data for stream 1
+Http2Session server (14) deferring stream 1
+Http2Session server (14) wants read? 1
+Http2Session server (14) wants read? 1
+Http2Session client (18) receiving 94 bytes, offset 0
+Http2Session client (18) receiving 94 bytes [wants data? 1]
+Http2Session client (18) complete frame received: type: 4
+HTTP2 21364: Http2Session client: settings received
+Http2Session client (18) settings refreshed for session
+Http2Session client (18) complete frame received: type: 6
+Http2Session client (18) complete frame received: type: 6
+Http2Session client (18) complete frame received: type: 6
+Http2Session client (18) beginning headers for stream 1
+HttpStream 1 (25) [Http2Session client (18)] starting headers, category: true
+Http2Session client (18) complete frame received: type: 1
+Http2Session client (18) handle headers frame for stream 1
+HTTP2 21364: Http2Stream 1 [Http2Session client]: headers received
+HTTP2 21364: Http2Stream 1 [Http2Session client]: emitting stream 'response' event
+Http2Session client (18) sending pending data
+Http2Session client (18) nghttp2 has 17 bytes to send
+Http2Session client (18) wants read? 1
+Http2Session client (18) wants read? 1
+Http2Session server (14) receiving 17 bytes, offset 0
+Http2Session server (14) receiving 17 bytes [wants data? 1]
+Http2Session server (14) complete frame received: type: 6
+HttpStream 1 (28) [Http2Session server (14)] queuing 1 buffers to send
+HTTP2 21364: Http2Stream 1 [Http2Session server]: shutting down writable on last write
+HttpStream 1 (28) [Http2Session server (14)] writable side shutdown
+Http2Session server (14) sending pending data
+Http2Session server (14) reading outbound data for stream 1
+Http2Session server (14) stream 1 has pending outbound data
+Http2Session server (14) sending 2 bytes for data frame on stream 1
+Http2Session server (14) no more data for stream 1
+Http2Session server (14) nghttp2 has 2 bytes to send directly
+Http2Session server (14) stream 1 closed with code: 0
+HttpStream 1 (28) [Http2Session server (14)] closed with code 0
+HTTP2 21364: Http2Stream 1 [Http2Session server]: closed with code 0, closed false, readable false
+HTTP2 21364: Http2Stream 1 [Http2Session server]: destroying stream
+HttpStream 1 (28) [Http2Session server (14)] destroying stream
+HttpStream 1 (28) [Http2Session server (14)] destroying stream
+Http2Session server (14) wants read? 1
+Http2Session server (14) wants read? 1
+HttpStream 1 (28) [Http2Session server (14)] tearing down stream
+Http2Session client (18) receiving 11 bytes, offset 0
+Http2Session client (18) receiving 11 bytes [wants data? 1]
+Http2Session client (18) buffering data chunk for stream 1, size: 2, flags: 1
+HttpStream 1 (25) [Http2Session client (18)] reading starting
+Http2Session client (18) complete frame received: type: 0
+Http2Session client (18) handling data frame for stream 1
+HttpStream 1 (25) [Http2Session client (18)] reading stopped
+HTTP2 21364: Http2Session client: marking session closed
+HTTP2 21364: Http2Session client: submitting goaway
+Http2Session client (18) submitting goaway
+Http2Session client (18) stream 1 closed with code: 0
+HttpStream 1 (25) [Http2Session client (18)] closed with code 0
+HTTP2 21364: Http2Stream 1 [Http2Session client]: closed with code 0, closed false, readable false
+HTTP2 21364: Http2Stream 1 [Http2Session client]: destroying stream
+HttpStream 1 (25) [Http2Session client (18)] destroying stream
+HttpStream 1 (25) [Http2Session client (18)] destroying stream
+HTTP2 21364: Http2Session client: destroying
+HTTP2 21364: Http2Session client: start closing/destroying
+Http2Session client (18) destroying session
+Http2Session client (18) closing session
+Http2Session client (18) terminating session with code 0
+Http2Session client (18) sending pending data
+Http2Session client (18) nghttp2 has 17 bytes to send
+Http2Session client (18) nghttp2 has 17 bytes to send
+Http2Session client (18) make done session callback
+HTTP2 21364: Http2Session client: finishSessionClose
+HttpStream 1 (25) [Http2Session client (18)] tearing down stream
+HTTP2 21364: Http2Session client: finishSessionClose socket end undefined
+Http2Session server (14) receiving 34 bytes, offset 0
+Http2Session server (14) receiving 34 bytes [wants data? 1]
+Http2Session server (14) complete frame received: type: 7
+Http2Session server (14) handling goaway frame
+HTTP2 21364: Http2Session server: goaway 0 received [last stream id: 0]
+Http2Session client (18) freeing nghttp2 session
+HTTP2 21364: Http2Session server: marking session closed
+HTTP2 21364: Http2Session server: submitting goaway
+Http2Session server (14) submitting goaway
+HTTP2 21364: Http2Session server: destroying
+HTTP2 21364: Http2Session server: start closing/destroying
+Http2Session server (14) destroying session
+Http2Session server (14) closing session
+Http2Session server (14) terminating session with code 0
+Http2Session server (14) sending pending data
+Http2Session server (14) nghttp2 has 17 bytes to send
+Http2Session server (14) nghttp2 has 17 bytes to send
+Http2Session server (14) make done session callback
+HTTP2 21364: Http2Session server: finishSessionClose
+HTTP2 21364: Http2Session server: finishSessionClose socket end undefined
+Http2Session server (14) freeing nghttp2 session
+

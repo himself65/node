@@ -108,6 +108,8 @@ added: v22.5.0
     [double-quoted string literals][]. This is not recommended but can be
     enabled for compatibility with legacy database schemas.
     **Default:** `false`.
+  * `allowLoadExtension` {boolean} If `true`, the `loadExtension` SQL function
+    is enabled. **Default:** `false`.
 
 Constructs a new `DatabaseSync` instance.
 
@@ -119,6 +121,28 @@ added: v22.5.0
 
 Closes the database connection. An exception is thrown if the database is not
 open. This method is a wrapper around [`sqlite3_close_v2()`][].
+
+### `database.loadExtension(path)`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+* `path` {string} The path to the shared library to load.
+
+Loads a shared library into the database connection. The `allowLoadExtension` option must be
+enabled when constructing the `DatabaseSync` instance.
+
+### `database.enableLoadExtension(allow)`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+* `allow` {boolean} Whether to allow loading extensions.
+
+Enables or disables the `loadExtension` SQL function. The `allowLoadExtension` option must be
+enabled when constructing the `DatabaseSync` instance.
 
 ### `database.exec(sql)`
 

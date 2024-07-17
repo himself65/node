@@ -2155,6 +2155,16 @@ An attempt was made to open an IPC communication channel with a synchronously
 forked Node.js process. See the documentation for the [`child_process`][] module
 for more information.
 
+<a id="ERR_LOAD_SQLITE_EXTENSION"></a>
+
+### `ERR_LOAD_SQLITE_EXTENSION`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+An error occurred while loading a SQLite extension.
+
 <a id="ERR_LOADER_CHAIN_INCOMPLETE"></a>
 
 ### `ERR_LOADER_CHAIN_INCOMPLETE`

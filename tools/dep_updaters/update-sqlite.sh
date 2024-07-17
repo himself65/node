@@ -48,6 +48,7 @@ SQLITE_ZIP="sqlite-$NEW_VERSION"
 cd "$WORKSPACE"
 
 echo "Fetching SQLITE source archive..."
+echo "https://sqlite.org/$AMALGAMATION"
 curl -sL -o "$SQLITE_ZIP.zip" "https://sqlite.org/$AMALGAMATION"
 
 log_and_verify_sha256sum "sqlite" "$SQLITE_ZIP.zip"
@@ -59,6 +60,7 @@ rm "$SQLITE_ZIP.zip"
 echo "Copying new files to deps folder"
 cp "$WORKSPACE/sqlite/sqlite3.c" "$DEPS_DIR/sqlite/"
 cp "$WORKSPACE/sqlite/sqlite3.h" "$DEPS_DIR/sqlite/"
+cp "$WORKSPACE/sqlite/sqlite3ext.h" "$DEPS_DIR/sqlite/"
 
 echo ""
 

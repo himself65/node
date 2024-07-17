@@ -6,6 +6,7 @@
 #include "node.h"
 #include "node_errors.h"
 #include "node_mem-inl.h"
+#include "path.h"
 #include "sqlite3.h"
 #include "util-inl.h"
 
@@ -118,6 +119,7 @@ DatabaseSync::DatabaseSync(Environment* env,
     : BaseObject(env, object), open_config_(std::move(open_config)) {
   MakeWeak();
   connection_ = nullptr;
+  allow_load_extension_ = false;
 
   if (open) {
     Open();
@@ -181,6 +183,13 @@ bool DatabaseSync::Open() {
       &foreign_keys_enabled);
   CHECK_ERROR_OR_THROW(env()->isolate(), connection_, r, SQLITE_OK, false);
   CHECK_EQ(foreign_keys_enabled, open_config_.get_enable_foreign_keys());
+
+  if (allow_load_extension_) {
+    int load_extension_ret = sqlite3_db_config(
+        connection_, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 1, nullptr);
+    CHECK_ERROR_OR_THROW(
+        env()->isolate(), connection_, load_extension_ret, SQLITE_OK, false);
+  }
 
   return true;
 }
@@ -524,6 +533,53 @@ void DatabaseSync::ApplyChangeset(const FunctionCallbackInfo<Value>& args) {
   }
   CHECK_ERROR_OR_THROW(env->isolate(), db->connection_, r, SQLITE_OK, void());
   args.GetReturnValue().Set(true);
+}
+
+void DatabaseSync::EnableLoadExtension(
+    const FunctionCallbackInfo<Value>& args) {
+  DatabaseSync* db;
+  ASSIGN_OR_RETURN_UNWRAP(&db, args.This());
+  Environment* env = Environment::GetCurrent(args);
+  if (!args[0]->IsBoolean()) {
+    THROW_ERR_INVALID_ARG_TYPE(
+        env->isolate(), "The \"allow\" argument must be a boolean.");
+    return;
+  }
+
+  db->allow_load_extension_ = args[0]->IsTrue();
+}
+
+void DatabaseSync::LoadExtension(const FunctionCallbackInfo<Value>& args) {
+  DatabaseSync* db;
+  ASSIGN_OR_RETURN_UNWRAP(&db, args.This());
+  Environment* env = Environment::GetCurrent(args);
+  THROW_AND_RETURN_ON_BAD_STATE(
+      env, db->connection_ == nullptr, "database is not open");
+  THROW_AND_RETURN_ON_BAD_STATE(
+      env, !db->allow_load_extension_, "extension loading is not allowed");
+
+  if (!args[0]->IsString()) {
+    node::THROW_ERR_INVALID_ARG_TYPE(env->isolate(),
+                                     "The \"path\" argument must be a string.");
+    return;
+  }
+
+  auto isolate = env->isolate();
+
+  BufferValue path(isolate, args[0]);
+  BufferValue entryPoint(isolate, args[1]);
+  CHECK_NOT_NULL(*path);
+  ToNamespacedPath(env, &path);
+  if (*entryPoint == nullptr) {
+    ToNamespacedPath(env, &entryPoint);
+  }
+  THROW_IF_INSUFFICIENT_PERMISSIONS(
+      env, permission::PermissionScope::kFileSystemRead, path.ToStringView());
+  char* errmsg = nullptr;
+  int r = sqlite3_load_extension(db->connection_, *path, *entryPoint, &errmsg);
+  if (r != SQLITE_OK) {
+    isolate->ThrowException(node::ERR_LOAD_SQLITE_EXTENSION(isolate, errmsg));
+  }
 }
 
 StatementSync::StatementSync(Environment* env,
@@ -1312,6 +1368,12 @@ static void Initialize(Local<Object> target,
       isolate, db_tmpl, "createSession", DatabaseSync::CreateSession);
   SetProtoMethod(
       isolate, db_tmpl, "applyChangeset", DatabaseSync::ApplyChangeset);
+  SetProtoMethod(isolate,
+                 db_tmpl,
+                 "enableLoadExtension",
+                 DatabaseSync::EnableLoadExtension);
+  SetProtoMethod(
+      isolate, db_tmpl, "loadExtension", DatabaseSync::LoadExtension);
   SetConstructorFunction(context, target, "DatabaseSync", db_tmpl);
   SetConstructorFunction(context,
                          target,

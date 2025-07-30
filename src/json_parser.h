@@ -7,8 +7,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include "util.h"
-#include "v8.h"
+#include "simdjson.h"
 
 namespace node {
 // This is intended to be used to get some top-level fields out of a JSON
@@ -25,12 +24,9 @@ class JSONParser {
   std::optional<StringDict> GetTopLevelStringDict(std::string_view field);
 
  private:
-  // We might want a lighter-weight JSON parser for this use case. But for now
-  // using V8 is good enough.
-  RAIIIsolateWithoutEntering isolate_;
-
-  v8::Global<v8::Context> context_;
-  v8::Global<v8::Object> content_;
+  simdjson::ondemand::parser json_parser_;
+  std::string content_string_;
+  std::unique_ptr<simdjson::ondemand::document> document_;
   bool parsed_ = false;
 };
 }  // namespace node
